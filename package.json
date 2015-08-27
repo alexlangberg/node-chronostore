@@ -1,0 +1,36 @@
+{
+  "name": "node-chronostore",
+  "version": "1.0.0",
+  "description": "In dev.",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "tape": "^4.2.0"
+  },
+  "devDependencies": {
+    "covert": "^1.1.0",
+    "tape": "^4.2.0"
+  },
+  "scripts": {
+    "test": "node test/*.js",
+    "coverage": "covert test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexlangberg/node-chronostore.git"
+  },
+  "keywords": [
+    "storage",
+    "chronological",
+    "files",
+    "filesystem"
+  ],
+  "author": "Alex Langberg",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/alexlangberg/node-chronostore/issues"
+  },
+  "homepage": "https://github.com/alexlangberg/node-chronostore#readme"
+}
