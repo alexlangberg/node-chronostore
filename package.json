@@ -10,16 +10,20 @@
     "coveralls": "^2.11.4",
     "covert": "^1.1.0",
     "doctoc": "^0.15.0",
+    "eslint": "^1.3.1",
     "faucet": "0.0.1",
+    "gulp-tap": "^0.1.3",
     "rimraf": "^2.4.3",
     "tape": "^4.2.0",
+    "vinyl": "^0.5.1",
     "watch": "^0.16.0"
   },
   "scripts": {
-    "test": "node test/*.js | faucet",
-    "coverage": "covert test/*.js || true",
+    "test": "node test/*.js | faucet && npm run clean",
+    "lint": "eslint lib test || true",
+    "coverage": "covert test/*.js || true && npm run clean",
     "coveralls": "npm run coverage -s && coveralls < coverage/lcov.info",
-    "watch": "watch 'clear && npm test && npm run coverage' lib test",
+    "watch": "watch 'clear && npm run lint && npm test && npm run coverage' lib test",
     "doctoc": "doctoc --github --title \"# Changelog\" CHANGELOG.md",
     "patch": "npm version patch",
     "minor": "npm version minor",
@@ -41,5 +45,14 @@
   "bugs": {
     "url": "https://github.com/alexlangberg/node-chronostore/issues"
   },
-  "homepage": "https://github.com/alexlangberg/node-chronostore#readme"
+  "homepage": "https://github.com/alexlangberg/node-chronostore#readme",
+  "dependencies": {
+    "gulp-gzip": "^1.2.0",
+    "gulp-rename": "^1.2.2",
+    "moment": "^2.10.6",
+    "node-uuid": "^1.4.3",
+    "ramda": "^0.17.1",
+    "through2": "^2.0.0",
+    "vinyl-fs": "^1.0.0"
+  }
 }
