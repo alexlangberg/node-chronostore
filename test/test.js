@@ -3,44 +3,64 @@
 /*eslint-disable vars-on-top */
 
 var test = require('tape');
-var subject = require('../');
+var cs = require('../');
 var Vinyl = require('vinyl');
-var through2 = require('through2');
-var tap = require('gulp-tap');
-var fs = require('fs');
 
-var log = function(file) {
-  for (var property in file) {
-    if (file.hasOwnProperty(property)) {
-      console.log(property, file[property]);
-    }
-  }
-};
+//function log(object) {
+//  for (var property in object) {
+//    if (object.hasOwnProperty(property)) {
+//      console.log(property, object[property]);
+//    }
+//  }
+//}
 
-test('returns true', function(t) {
+function writeAndRead(file, options, callback) {
+  cs.objectToStream(file)
+    .pipe(cs.write(options))
+    .on('data', function(obj) {
+      var filePath = obj.history[obj.history.length - 1];
+      cs.getJSONgzStream(filePath)
+        .on('data', function(data) {
+          callback({
+            'filePath': filePath,
+            'obj': obj,
+            'content': data
+          });
+        });
+    });
+}
+
+test('returns true', function (t) {
   t.plan(1);
-  t.equal(typeof subject.write, 'function');
+  t.equal(typeof cs.write, 'function');
 });
 
-test('can write file', function(t) {
+test('can write a virtual file', function (t) {
   t.plan(2);
 
+  var fileContent = '{"foo":"bars"}';
   var file = new Vinyl({
     'path': 'tests.json',
-    'contents': new Buffer('{"foo":"barssss"}')
+    'contents': new Buffer(fileContent)
   });
 
-  var input = through2.obj();
-  input.push(file);
-  input.push(null);
-  input
-    .pipe(subject.write({ 'root': './testdata' }))
-    .pipe(tap(function(obj) {
-      //log(obj);
-      var filename = obj.history[obj.history.length - 1];
-      var file = fs.readFileSync(filename);
+  writeAndRead(file, {'root': './testdata'}, function(data) {
+    t.true(data.filePath.indexOf('.json.gz') > -1);
+    t.equal(data.content.foo, JSON.parse(fileContent).foo);
+  });
+});
 
-      t.true(filename.indexOf('.json.gz') > -1);
-      t.true(Buffer.isBuffer(file));
-    }));
+test('can write with default options', function (t) {
+  t.plan(2);
+
+  var fileContent = '{"foo":"bars"}';
+  var file = new Vinyl({
+    'path': 'tests.json',
+    'contents': new Buffer(fileContent)
+  });
+
+  writeAndRead(file, null, function(data) {
+    t.true(data.filePath.indexOf('.json.gz') > -1);
+    t.equal(data.content.foo, JSON.parse(fileContent).foo);
+  });
 });

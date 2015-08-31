@@ -28,7 +28,7 @@
     "patch": "npm version patch",
     "minor": "npm version minor",
     "major": "npm version major",
-    "clean": "rimraf testdata"
+    "clean": "rimraf testdata output"
   },
   "repository": {
     "type": "git",
