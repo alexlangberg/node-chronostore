@@ -30,6 +30,7 @@ function writeAndReadObject(file, options, callback) {
     .pipe(cs.write(options))
     .on('data', function(obj) {
       var filePath = obj.history.slice(-1)[0];
+
       cs.getJSONgzStream(filePath)
         .on('data', function(data) {
           callback({
@@ -80,11 +81,27 @@ test('write physical file', function (t) {
     .pipe(cs.write({'root': testDir}))
     .on('data', function(obj) {
       var newFilePath = obj.history.slice(-1)[0];
+
       cs.getJSONgzStream(newFilePath)
         .on('data', function(data) {
           t.equal(data.foo, fileContent.foo);
         });
     });
+});
+
+test('can have the timestamp overridden', function (t) {
+  t.plan(2);
+
+  var fileContent = '{"foo": "bars"}';
+  var options = {
+    'root': testDir,
+    'timestamp': 123
+  };
+
+  writeAndReadObject(createVinyl(fileContent), options, function(data) {
+    t.true(data.filePath.indexOf(options.timestamp + '') > -1);
+    t.equal(data.content.foo, JSON.parse(fileContent).foo);
+  });
 });
 
 //test('write and read multiple files', function (t) {
