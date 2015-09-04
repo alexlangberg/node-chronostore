@@ -2,13 +2,15 @@
 
 /*eslint-disable vars-on-top */
 /*eslint-disable max-nested-callbacks */
+/*eslint-disable handle-callback-err */
 
 var test = require('tape');
 var cs = require('../');
 var Vinyl = require('vinyl');
 var fs = require('fs-extra');
-var vfs = require('vinyl-fs');
+var through2 = require('through2');
 var testDir = './testdata';
+var options = {'root': testDir};
 
 //function log(object) {
 //  for (var property in object) {
@@ -20,76 +22,68 @@ var testDir = './testdata';
 
 function createVinyl(contents) {
   return new Vinyl({
-    'path': 'tests.json',
+    'path': 'chronostore.json',
     'contents': new Buffer(contents)
   });
 }
 
-function writeAndReadObject(file, options, callback) {
-  cs.objectToStream(file)
+function writeVinyl(file, options, callback) {
+  cs.vinylToStream(file)
     .pipe(cs.write(options))
-    .on('data', function(obj) {
-      var filePath = obj.history.slice(-1)[0];
-
-      cs.getJSONgzStream(filePath)
-        .on('data', function(data) {
-          callback({
-            'filePath': filePath,
-            'obj': obj,
-            'content': data
-          });
-        });
+    .on('data', function(result) {
+      return callback(null, result);
     });
 }
 
-test('returns true', function (t) {
-  t.plan(1);
-  t.equal(typeof cs.write, 'function');
-});
+function readVinyl(filePath, callback) {
+  cs.getVinylStream(filePath)
+    .on('data', function(file) {
+      var json = JSON.parse(file.contents.toString());
+      return callback(null, file, json);
+    });
+}
 
-test('can write a virtual file', function (t) {
+function writeReadVinyl(file, options, callback) {
+  writeVinyl(file, options, function(err, result) {
+    var filePath = result.history.slice(-1)[0];
+    readVinyl(filePath, callback);
+  });
+}
+
+test('it can write a virtual file', function (t) {
   t.plan(2);
-
   var fileContent = '{"foo": "bars"}';
 
-  writeAndReadObject(createVinyl(fileContent), {'root': testDir}, function(data) {
-    t.true(data.filePath.indexOf('.json.gz') > -1);
-    t.equal(data.content.foo, JSON.parse(fileContent).foo);
+  writeReadVinyl(createVinyl(fileContent), options, function(err, file, json) {
+    t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
+    t.equal(json.foo, JSON.parse(fileContent).foo);
   });
 });
 
-test('can write with default options', function (t) {
+test('it can write with default options', function (t) {
   t.plan(2);
-
   var fileContent = '{"foo": "bars"}';
+  var options = null;
 
-  writeAndReadObject(createVinyl(fileContent), null, function(data) {
-    t.true(data.filePath.indexOf('.json.gz') > -1);
-    t.equal(data.content.foo, JSON.parse(fileContent).foo);
+  writeReadVinyl(createVinyl(fileContent), options, function(err, file, json) {
+    t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
+    t.equal(json.foo, JSON.parse(fileContent).foo);
   });
 });
 
-test('write physical file', function (t) {
+test('it write physical file', function (t) {
   t.plan(1);
-
   var filePath = testDir + '/' + 'foobars.json';
   var fileContent = {'foo': 'bars'};
 
   fs.outputJsonSync(filePath, fileContent);
 
-  vfs.src(filePath)
-    .pipe(cs.write({'root': testDir}))
-    .on('data', function(obj) {
-      var newFilePath = obj.history.slice(-1)[0];
-
-      cs.getJSONgzStream(newFilePath)
-        .on('data', function(data) {
-          t.equal(data.foo, fileContent.foo);
-        });
-    });
+  readVinyl(filePath, function(err, file, json) {
+    t.equal(json.foo, fileContent.foo);
+  });
 });
 
-test('can have the timestamp overridden', function (t) {
+test('it can have the timestamp overridden', function (t) {
   t.plan(2);
 
   var fileContent = '{"foo": "bars"}';
@@ -98,10 +92,53 @@ test('can have the timestamp overridden', function (t) {
     'timestamp': 123
   };
 
-  writeAndReadObject(createVinyl(fileContent), options, function(data) {
-    t.true(data.filePath.indexOf(options.timestamp + '') > -1);
-    t.equal(data.content.foo, JSON.parse(fileContent).foo);
+  writeReadVinyl(createVinyl(fileContent), options, function(err, file, json) {
+    var filePath = file.history.slice(-1)[0];
+    t.true(filePath.indexOf(options.timestamp + '') > -1);
+    t.equal(json.foo, JSON.parse(fileContent).foo);
   });
+});
+
+test('it can gzip file', function (t) {
+  t.plan(2);
+
+  var fileContent = '{"foo": "bars"}';
+  var options = {'root': testDir, 'gzip': true};
+
+  writeReadVinyl(createVinyl(fileContent), options, function(err, file, json) {
+    t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
+    t.equal(json.foo, JSON.parse(fileContent).foo);
+  });
+});
+
+test('it ignores empty files', function(t) {
+  t.plan(3);
+
+  var file = new Vinyl({
+    'path': 'chronostore.json',
+    'contents': null
+  });
+
+  writeVinyl(file, options, function(err, result) {
+    t.equal(result.contents, null);
+    t.equal(result.history.length, 1);
+    t.equal(result.history[0], 'chronostore.json');
+  });
+});
+
+test('it throws on streams', function(t) {
+  t.plan(1);
+
+  var file = new Vinyl({
+    'path': 'chronostore.json',
+    'contents': through2.obj()
+  });
+
+  cs.vinylToStream(file)
+    .pipe(cs.write(options))
+    .on('error', function(error) {
+      t.equal(error.message, 'Streaming not supported');
+    });
 });
 
 //test('write and read multiple files', function (t) {
@@ -131,32 +168,4 @@ test('can have the timestamp overridden', function (t) {
 //          }
 //        });
 //    });
-//});
-
-// this is a silly strategy... should probably rather
-// make some way of fetching a date from the file if it is JSON
-//
-//test('keeps timestamp of physical file', function (t) {
-//  t.plan(1);
-//
-//  var filePath = testDir + '/' + 'foobars.json';
-//  var fileContent = {'foo': 'bars'};
-//
-//  fs.outputJsonSync(filePath, fileContent);
-//  var stat = fs.statSync(filePath); // use stat.mtime
-//  console.log(stat.mtime.getTime());
-//
-//  setTimeout(function() {
-//    vfs.src(filePath)
-//      .pipe(cs.write({'root': testDir}))
-//      .on('data', function(obj) {
-//        var newFilePath = obj.history.slice(-1)[0];
-//        var newFileName = newFilePath.replace(obj.base + '/', '');
-//        var newTimestamp = newFileName.slice(0, 13);
-//        console.log(obj.history);
-//        console.log(newTimestamp);
-//        console.log(stat.mtime.getTime());
-//        t.true(1);
-//      });
-//  }, 1000);
 //});
