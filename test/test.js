@@ -14,6 +14,7 @@ var concat = require('concat-stream');
 
 var testDir = './testdata';
 var defaultDir = './chronostore';
+
 var options = {'root': testDir};
 var fileContents = [
   {'path': 'file1.json', 'contents': '{"foo":1}'},
@@ -29,12 +30,12 @@ var fileContents = [
 //  }
 //}
 
-function createVinyl(options) {
-  return new Vinyl({
-    'path': options.path || 'chronostore.json',
-    'contents': new Buffer(options.contents)
-  });
-}
+//function createVinyl(options) {
+//  return new Vinyl({
+//    'path': options.path || 'chronostore.json',
+//    'contents': new Buffer(options.contents)
+//  });
+//}
 
 function writeVinyl(file, options, callback) {
   cs.vinylsToStream(file)
@@ -59,28 +60,28 @@ function writeReadVinyl(file, options, callback) {
   });
 }
 
-test('it can write a virtual file to disk', function (t) {
+test('it can write a virtual file to disk', function(t) {
   t.plan(2);
 
-  writeReadVinyl(createVinyl(fileContents[0]), options, function(err, file, json) {
+  writeReadVinyl(cs.createVinyl(fileContents[0]), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
     t.equal(json.foo, JSON.parse(fileContents[0].contents).foo);
     rimraf.sync(testDir);
   });
 });
 
-test('it can write a file to disk with default options', function (t) {
+test('it can write a file to disk with default options', function(t) {
   t.plan(2);
   var options = null;
 
-  writeReadVinyl(createVinyl(fileContents[0]), options, function(err, file, json) {
+  writeReadVinyl(cs.createVinyl(fileContents[0]), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
     t.equal(json.foo, JSON.parse(fileContents[0].contents).foo);
     rimraf.sync(defaultDir);
   });
 });
 
-test('it read and write a physical file back to disk', function (t) {
+test('it can read and write a physical file back to disk', function(t) {
   t.plan(1);
   var filePath = testDir + '/' + 'foobars.json';
   var fileContent = {'foo': 'bars'};
@@ -93,7 +94,7 @@ test('it read and write a physical file back to disk', function (t) {
   });
 });
 
-test('it can have the timestamp overridden', function (t) {
+test('it can have the timestamp overridden', function(t) {
   t.plan(2);
 
   var options = {
@@ -101,7 +102,7 @@ test('it can have the timestamp overridden', function (t) {
     'timestamp': 123
   };
 
-  writeReadVinyl(createVinyl(fileContents[0]), options, function(err, file, json) {
+  writeReadVinyl(cs.createVinyl(fileContents[0]), options, function(err, file, json) {
     var filePath = file.history.slice(-1)[0];
     t.true(filePath.indexOf(options.timestamp + '') > -1);
     t.equal(json.foo, JSON.parse(fileContents[0].contents).foo);
@@ -109,11 +110,11 @@ test('it can have the timestamp overridden', function (t) {
   });
 });
 
-test('it can gzip files', function (t) {
+test('it can gzip files', function(t) {
   t.plan(2);
   var options = {'root': testDir, 'gzip': true};
 
-  writeReadVinyl(createVinyl(fileContents[0]), options, function(err, file, json) {
+  writeReadVinyl(cs.createVinyl(fileContents[0]), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
     t.equal(json.foo, JSON.parse(fileContents[0].contents).foo);
     rimraf.sync(testDir);
@@ -183,7 +184,7 @@ test('it throws on write input as streams if gzip enabled', function(t) {
 test('it can read vinyl files with content as streams', function(t) {
   t.plan(2);
 
-  writeVinyl(createVinyl(fileContents[0]), options, function(err, file) {
+  writeVinyl(cs.createVinyl(fileContents[0]), options, function(err, file) {
     var readOptions = {
       'gulp': {
         'buffer': false
@@ -212,7 +213,7 @@ test('it can search with default options', function(t) {
 
   var input = {'contents': '{"foo": "bars"}'};
 
-  cs.vinylsToStream(createVinyl(input))
+  cs.vinylsToStream(cs.createVinyl(input))
     .pipe(cs.write())
     .on('data', function() {})
     .on('end', function() {
@@ -231,10 +232,9 @@ test('it can search with default options', function(t) {
 test('it can search for specific time period', function(t) {
   t.plan(1);
 
-
-  var file1 = createVinyl(fileContents[0]);
-  var file2 = createVinyl(fileContents[1]);
-  var file3 = createVinyl(fileContents[2]);
+  var file1 = cs.createVinyl(fileContents[0]);
+  var file2 = cs.createVinyl(fileContents[1]);
+  var file3 = cs.createVinyl(fileContents[2]);
 
   var options1 = {'root': testDir, 'timestamp': 1000};
   var options2 = {'root': testDir, 'timestamp': 2000};
@@ -255,4 +255,24 @@ test('it can search for specific time period', function(t) {
       });
     });
   });
+});
+
+test('it can write a JS object to disk as JSON', function(t) {
+  t.plan(1);
+  var obj = {'foo': 'bar'};
+  var options = {'root': 'objecttest'};
+
+  var stream = through2.obj();
+  stream.push(obj);
+  stream.push(null);
+
+  stream.pipe(cs.writeObject(options))
+    .on('data', function() {
+      cs.search(options)
+        .on('data', function(file) {
+          var json = JSON.parse(file.contents.toString());
+          t.equal(json.foo, obj.foo);
+          rimraf.sync(options.root);
+        });
+    });
 });
