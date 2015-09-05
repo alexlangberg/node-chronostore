@@ -30,13 +30,6 @@ var fileContents = [
 //  }
 //}
 
-//function createVinyl(options) {
-//  return new Vinyl({
-//    'path': options.path || 'chronostore.json',
-//    'contents': new Buffer(options.contents)
-//  });
-//}
-
 function writeVinyl(file, options, callback) {
   cs.vinylsToStream(file)
     .pipe(cs.write(options))
@@ -66,15 +59,14 @@ test('it can write a virtual file to disk', function(t) {
   writeReadVinyl(cs.createVinyl(fileContents[0]), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
     t.equal(json.foo, JSON.parse(fileContents[0].contents).foo);
-    rimraf.sync(testDir);
+    rimraf.sync(options.root);
   });
 });
 
 test('it can write a file to disk with default options', function(t) {
   t.plan(2);
-  var options = null;
 
-  writeReadVinyl(cs.createVinyl(fileContents[0]), options, function(err, file, json) {
+  writeReadVinyl(cs.createVinyl(fileContents[0]), null, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
     t.equal(json.foo, JSON.parse(fileContents[0].contents).foo);
     rimraf.sync(defaultDir);
@@ -90,7 +82,7 @@ test('it can read and write a physical file back to disk', function(t) {
 
   readVinyl(filePath, function(err, file, json) {
     t.equal(json.foo, fileContent.foo);
-    rimraf.sync(testDir);
+    rimraf.sync(options.root);
   });
 });
 
@@ -106,7 +98,7 @@ test('it can have the timestamp overridden', function(t) {
     var filePath = file.history.slice(-1)[0];
     t.true(filePath.indexOf(options.timestamp + '') > -1);
     t.equal(json.foo, JSON.parse(fileContents[0].contents).foo);
-    rimraf.sync(testDir);
+    rimraf.sync(options.root);
   });
 });
 
@@ -117,7 +109,43 @@ test('it can gzip files', function(t) {
   writeReadVinyl(cs.createVinyl(fileContents[0]), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
     t.equal(json.foo, JSON.parse(fileContents[0].contents).foo);
-    rimraf.sync(testDir);
+    rimraf.sync(options.root);
+  });
+});
+
+test('it can parse vinyl contents as JSON and return that instead', function(t) {
+  t.plan(1);
+  var options = {
+    'root': testDir,
+    'parseJSON': true
+  };
+
+  writeVinyl(cs.createVinyl(fileContents[0]), options, function(err, result) {
+    var filePath = result.history.slice(-1)[0];
+    cs.read(filePath, options)
+      .on('data', function(data) {
+        t.equal(data.foo, JSON.parse(fileContents[0].contents).foo);
+        rimraf.sync(options.root);
+      });
+  });
+});
+
+test('it can pass through other files when set to parse JSON', function(t) {
+  t.plan(1);
+  var options = {
+    'root': testDir,
+    'parseJSON': true
+  };
+  var input = {'contents': 'not valid JSON'};
+
+  writeVinyl(cs.createVinyl(input), options, function(err, result) {
+    var filePath = result.history.slice(-1)[0];
+    cs.read(filePath, options)
+      .on('data', function(data) {
+        var content = data.contents.toString();
+        t.equal(content, input.contents);
+        rimraf.sync(options.root);
+      });
   });
 });
 
@@ -133,7 +161,7 @@ test('it ignores empty files', function(t) {
     t.equal(result.contents, null);
     t.equal(result.history.length, 1);
     t.equal(result.history[0], 'chronostore.json');
-    rimraf.sync(testDir);
+    rimraf.sync(options.root);
   });
 });
 
@@ -155,7 +183,7 @@ test('it can write input vinyls with streams as content', function(t) {
         JSON.parse(final.contents.toString()).foo,
         JSON.parse(fileContents[0].contents).foo
       );
-      rimraf.sync(testDir);
+      rimraf.sync(options.root);
     });
   });
 });
@@ -177,7 +205,25 @@ test('it throws on write input as streams if gzip enabled', function(t) {
     .pipe(cs.write(options))
     .on('error', function(error) {
       t.equal(error.message, 'Streaming not supported with gzip enabled');
-      rimraf.sync(testDir);
+      rimraf.sync(options.root);
+    });
+});
+
+test('it can write a JS object to disk as JSON', function(t) {
+  t.plan(1);
+  var obj = {'foo': 'bar'};
+  var stream = through2.obj();
+  stream.push(obj);
+  stream.push(null);
+
+  stream.pipe(cs.writeObject(options))
+    .on('data', function() {
+      cs.search(options)
+        .on('data', function(file) {
+          var json = JSON.parse(file.contents.toString());
+          t.equal(json.foo, obj.foo);
+          rimraf.sync(options.root);
+        });
     });
 });
 
@@ -203,7 +249,7 @@ test('it can read vinyl files with content as streams', function(t) {
             );
           }));
 
-        rimraf.sync(testDir);
+        rimraf.sync(options.root);
       });
   });
 });
@@ -247,32 +293,14 @@ test('it can search for specific time period', function(t) {
           .on('data', function(file) {
             var json = JSON.parse(file.contents.toString());
             var original = JSON.parse(fileContents[1].contents);
-            t.equal(json.foo, original.foo);
-          })
-          .on('end', function() {
-            rimraf.sync(testDir);
+
+            // let file system take a breath...
+            setTimeout(function() {
+              t.equal(json.foo, original.foo);
+              rimraf.sync(options1.root);
+            }, 100);
           });
       });
     });
   });
-});
-
-test('it can write a JS object to disk as JSON', function(t) {
-  t.plan(1);
-  var obj = {'foo': 'bar'};
-  var options = {'root': 'objecttest'};
-
-  var stream = through2.obj();
-  stream.push(obj);
-  stream.push(null);
-
-  stream.pipe(cs.writeObject(options))
-    .on('data', function() {
-      cs.search(options)
-        .on('data', function(file) {
-          var json = JSON.parse(file.contents.toString());
-          t.equal(json.foo, obj.foo);
-          rimraf.sync(options.root);
-        });
-    });
 });
