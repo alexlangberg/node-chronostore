@@ -28,7 +28,7 @@
     "patch": "npm version patch",
     "minor": "npm version minor",
     "major": "npm version major",
-    "clean": "rimraf testdata output"
+    "clean": "rimraf testdata chronostore"
   },
   "repository": {
     "type": "git",
@@ -47,6 +47,8 @@
   },
   "homepage": "https://github.com/alexlangberg/node-chronostore#readme",
   "dependencies": {
+    "gulp": "^3.9.0",
+    "gulp-filter": "^3.0.1",
     "gulp-gunzip": "0.0.3",
     "gulp-gzip": "^1.2.0",
     "gulp-rename": "^1.2.2",
@@ -55,7 +57,6 @@
     "node-uuid": "^1.4.3",
     "ramda": "^0.17.1",
     "readdirp": "^2.0.0",
-    "through2": "^2.0.0",
-    "vinyl-fs": "^1.0.0"
+    "through2": "^2.0.0"
   }
 }

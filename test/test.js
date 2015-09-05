@@ -4,11 +4,13 @@
 /*eslint-disable max-nested-callbacks */
 /*eslint-disable handle-callback-err */
 
+var R = require('ramda');
 var test = require('tape');
 var cs = require('../');
 var Vinyl = require('vinyl');
 var fs = require('fs-extra');
 var through2 = require('through2');
+var rimraf = require('rimraf');
 var testDir = './testdata';
 var options = {'root': testDir};
 
@@ -20,15 +22,15 @@ var options = {'root': testDir};
 //  }
 //}
 
-function createVinyl(contents) {
+function createVinyl(options) {
   return new Vinyl({
-    'path': 'chronostore.json',
-    'contents': new Buffer(contents)
+    'path': options.path || 'chronostore.json',
+    'contents': new Buffer(options.contents)
   });
 }
 
-function writeVinyl(file, options, callback) {
-  cs.vinylToStream(file)
+function writeVinyls(files, options, callback) {
+  cs.vinylsToStream(files)
     .pipe(cs.write(options))
     .on('data', function(result) {
       return callback(null, result);
@@ -44,7 +46,7 @@ function readVinyl(filePath, callback) {
 }
 
 function writeReadVinyl(file, options, callback) {
-  writeVinyl(file, options, function(err, result) {
+  writeVinyls(file, options, function(err, result) {
     var filePath = result.history.slice(-1)[0];
     readVinyl(filePath, callback);
   });
@@ -52,22 +54,22 @@ function writeReadVinyl(file, options, callback) {
 
 test('it can write a virtual file', function (t) {
   t.plan(2);
-  var fileContent = '{"foo": "bars"}';
+  var input = {'contents': '{"foo": "bars"}'};
 
-  writeReadVinyl(createVinyl(fileContent), options, function(err, file, json) {
+  writeReadVinyl(createVinyl(input), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
-    t.equal(json.foo, JSON.parse(fileContent).foo);
+    t.equal(json.foo, JSON.parse(input.contents).foo);
   });
 });
 
 test('it can write with default options', function (t) {
   t.plan(2);
-  var fileContent = '{"foo": "bars"}';
+  var input = {'contents': '{"foo": "bars"}'};
   var options = null;
 
-  writeReadVinyl(createVinyl(fileContent), options, function(err, file, json) {
+  writeReadVinyl(createVinyl(input), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
-    t.equal(json.foo, JSON.parse(fileContent).foo);
+    t.equal(json.foo, JSON.parse(input.contents).foo);
   });
 });
 
@@ -86,28 +88,28 @@ test('it write physical file', function (t) {
 test('it can have the timestamp overridden', function (t) {
   t.plan(2);
 
-  var fileContent = '{"foo": "bars"}';
+  var input = {'contents': '{"foo": "bars"}'};
   var options = {
     'root': testDir,
     'timestamp': 123
   };
 
-  writeReadVinyl(createVinyl(fileContent), options, function(err, file, json) {
+  writeReadVinyl(createVinyl(input), options, function(err, file, json) {
     var filePath = file.history.slice(-1)[0];
     t.true(filePath.indexOf(options.timestamp + '') > -1);
-    t.equal(json.foo, JSON.parse(fileContent).foo);
+    t.equal(json.foo, JSON.parse(input.contents).foo);
   });
 });
 
 test('it can gzip file', function (t) {
   t.plan(2);
 
-  var fileContent = '{"foo": "bars"}';
+  var input = {'contents': '{"foo": "bars"}'};
   var options = {'root': testDir, 'gzip': true};
 
-  writeReadVinyl(createVinyl(fileContent), options, function(err, file, json) {
+  writeReadVinyl(createVinyl(input), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
-    t.equal(json.foo, JSON.parse(fileContent).foo);
+    t.equal(json.foo, JSON.parse(input.contents).foo);
   });
 });
 
@@ -119,7 +121,7 @@ test('it ignores empty files', function(t) {
     'contents': null
   });
 
-  writeVinyl(file, options, function(err, result) {
+  writeVinyls(file, options, function(err, result) {
     t.equal(result.contents, null);
     t.equal(result.history.length, 1);
     t.equal(result.history[0], 'chronostore.json');
@@ -134,10 +136,37 @@ test('it throws on streams', function(t) {
     'contents': through2.obj()
   });
 
-  cs.vinylToStream(file)
+  cs.vinylsToStream(file)
     .pipe(cs.write(options))
     .on('error', function(error) {
       t.equal(error.message, 'Streaming not supported');
+    });
+});
+
+test('it can search', function(t) {
+  t.plan(1);
+
+  var fileContents = [
+    {'path': 'file1.json', 'contents': '{"foo":1}'},
+    {'path': 'file2.json', 'contents': '{"foo":2}'},
+    {'path': 'file3.json', 'contents': '{"foo":3}'}
+  ];
+
+  var files = R.map(createVinyl, fileContents);
+
+  cs.vinylsToStream(files)
+    .pipe(cs.write(options))
+    .on('data', function(file) {})
+    .on('end', function() {
+      setTimeout(function() {
+        cs.search(options)
+          .on('data', function(file) {
+            console.log(file);
+          })
+          .on('end', function() {
+            t.true(1);
+          });
+      }, 3000);
     });
 });
 
