@@ -4,13 +4,13 @@
 /*eslint-disable max-nested-callbacks */
 /*eslint-disable handle-callback-err */
 
-var R = require('ramda');
 var test = require('tape');
 var cs = require('../');
 var Vinyl = require('vinyl');
 var fs = require('fs-extra');
 var through2 = require('through2');
 var rimraf = require('rimraf');
+var concat = require('concat-stream');
 
 var testDir = './testdata';
 var defaultDir = './chronostore';
@@ -59,30 +59,28 @@ function writeReadVinyl(file, options, callback) {
   });
 }
 
-test('it can write a virtual file', function (t) {
+test('it can write a virtual file to disk', function (t) {
   t.plan(2);
-  var input = {'contents': '{"foo": "bars"}'};
 
-  writeReadVinyl(createVinyl(input), options, function(err, file, json) {
+  writeReadVinyl(createVinyl(fileContents[0]), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
-    t.equal(json.foo, JSON.parse(input.contents).foo);
+    t.equal(json.foo, JSON.parse(fileContents[0].contents).foo);
     rimraf.sync(testDir);
   });
 });
 
-test('it can write with default options', function (t) {
+test('it can write a file to disk with default options', function (t) {
   t.plan(2);
-  var input = {'contents': '{"foo": "bars"}'};
   var options = null;
 
-  writeReadVinyl(createVinyl(input), options, function(err, file, json) {
+  writeReadVinyl(createVinyl(fileContents[0]), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
-    t.equal(json.foo, JSON.parse(input.contents).foo);
+    t.equal(json.foo, JSON.parse(fileContents[0].contents).foo);
     rimraf.sync(defaultDir);
   });
 });
 
-test('it write physical file', function (t) {
+test('it read and write a physical file back to disk', function (t) {
   t.plan(1);
   var filePath = testDir + '/' + 'foobars.json';
   var fileContent = {'foo': 'bars'};
@@ -98,29 +96,26 @@ test('it write physical file', function (t) {
 test('it can have the timestamp overridden', function (t) {
   t.plan(2);
 
-  var input = {'contents': '{"foo": "bars"}'};
   var options = {
     'root': testDir,
     'timestamp': 123
   };
 
-  writeReadVinyl(createVinyl(input), options, function(err, file, json) {
+  writeReadVinyl(createVinyl(fileContents[0]), options, function(err, file, json) {
     var filePath = file.history.slice(-1)[0];
     t.true(filePath.indexOf(options.timestamp + '') > -1);
-    t.equal(json.foo, JSON.parse(input.contents).foo);
+    t.equal(json.foo, JSON.parse(fileContents[0].contents).foo);
     rimraf.sync(testDir);
   });
 });
 
-test('it can gzip file', function (t) {
+test('it can gzip files', function (t) {
   t.plan(2);
-
-  var input = {'contents': '{"foo": "bars"}'};
   var options = {'root': testDir, 'gzip': true};
 
-  writeReadVinyl(createVinyl(input), options, function(err, file, json) {
+  writeReadVinyl(createVinyl(fileContents[0]), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
-    t.equal(json.foo, JSON.parse(input.contents).foo);
+    t.equal(json.foo, JSON.parse(fileContents[0].contents).foo);
     rimraf.sync(testDir);
   });
 });
@@ -141,7 +136,30 @@ test('it ignores empty files', function(t) {
   });
 });
 
-test('it throws on streams', function(t) {
+test('it can write input vinyls with streams as content', function(t) {
+  t.plan(1);
+
+  var stream = through2.obj();
+  stream.push(new Buffer(fileContents[0].contents));
+  stream.push(null);
+
+  var file = new Vinyl({
+    'path': 'chronostore.json',
+    'contents': stream
+  });
+
+  writeVinyl(file, options, function(err, result) {
+    readVinyl(result.path, function(err, final) {
+      t.equals(
+        JSON.parse(final.contents.toString()).foo,
+        JSON.parse(fileContents[0].contents).foo
+      );
+      rimraf.sync(testDir);
+    });
+  });
+});
+
+test('it throws on write input as streams if gzip enabled', function(t) {
   t.plan(1);
 
   var file = new Vinyl({
@@ -149,34 +167,44 @@ test('it throws on streams', function(t) {
     'contents': through2.obj()
   });
 
+  var options = {
+    'gzip': true,
+    'root': testDir
+  };
+
   cs.vinylsToStream(file)
     .pipe(cs.write(options))
     .on('error', function(error) {
-      t.equal(error.message, 'Streaming not supported');
+      t.equal(error.message, 'Streaming not supported with gzip enabled');
       rimraf.sync(testDir);
     });
 });
 
-test('it can search for everything', function(t) {
-  t.plan(3);
-  var files = R.map(createVinyl, fileContents);
-  var asserts = 0;
+test('it can read vinyl files with content as streams', function(t) {
+  t.plan(2);
 
-  cs.vinylsToStream(files)
-    .pipe(cs.write(options))
-    .on('data', function() {})
-    .on('end', function() {
-      cs.search(options)
-        .on('data', function(file) {
-          var json = JSON.parse(file.contents.toString());
-          var input = JSON.parse(fileContents[asserts].contents);
-          t.equal(json.foo, input.foo);
-          asserts++;
-        })
-        .on('end', function() {
-          rimraf.sync(testDir);
-        });
-    });
+  writeVinyl(createVinyl(fileContents[0]), options, function(err, file) {
+    var readOptions = {
+      'gulp': {
+        'buffer': false
+      }
+    };
+
+    cs.read(file.path, readOptions)
+      .on('data', function(result) {
+        t.true(result.isStream());
+
+        result.contents
+          .pipe(concat(function(data) {
+            t.equals(
+              JSON.parse(data.toString()).foo,
+              JSON.parse(fileContents[0].contents).foo
+            );
+          }));
+
+        rimraf.sync(testDir);
+      });
+  });
 });
 
 test('it can search with default options', function(t) {
@@ -228,32 +256,3 @@ test('it can search for specific time period', function(t) {
     });
   });
 });
-
-//test('write and read multiple files', function (t) {
-//  t.plan(1);
-//
-//  var filePath1 = testDir + '/' + 'file1.json';
-//  var filePath2 = testDir + '/' + 'file2.json';
-//  var filePath3 = testDir + '/' + 'file3.json';
-//  var fileContent1 = {'foo': '1bars'};
-//  var fileContent2 = {'foo': '2bars'};
-//  var fileContent3 = {'foo': '3bars'};
-//  var counter = 0;
-//  fs.outputJsonSync(filePath1, fileContent1);
-//  fs.outputJsonSync(filePath2, fileContent2);
-//  fs.outputJsonSync(filePath3, fileContent3);
-//
-//  vfs.src([filePath1, filePath2, filePath3])
-//    .pipe(cs.write({'root': 'lols'}))
-//    .on('data', function(obj) {
-//      var newFilePath = obj.history.slice(-1)[0];
-//      cs.getJSONgzStream(newFilePath)
-//        .on('data', function(data) {
-//          counter++;
-//          console.log(data);
-//          if (counter === 3) {
-//            t.true(1);
-//          }
-//        });
-//    });
-//});
