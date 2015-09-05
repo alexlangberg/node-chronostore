@@ -12,6 +12,7 @@ var fs = require('fs-extra');
 var through2 = require('through2');
 var rimraf = require('rimraf');
 var testDir = './testdata';
+var defaultDir = './chronostore';
 var options = {'root': testDir};
 
 //function log(object) {
@@ -59,6 +60,7 @@ test('it can write a virtual file', function (t) {
   writeReadVinyl(createVinyl(input), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
     t.equal(json.foo, JSON.parse(input.contents).foo);
+    rimraf.sync(testDir);
   });
 });
 
@@ -70,6 +72,7 @@ test('it can write with default options', function (t) {
   writeReadVinyl(createVinyl(input), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
     t.equal(json.foo, JSON.parse(input.contents).foo);
+    rimraf.sync(defaultDir);
   });
 });
 
@@ -82,6 +85,7 @@ test('it write physical file', function (t) {
 
   readVinyl(filePath, function(err, file, json) {
     t.equal(json.foo, fileContent.foo);
+    rimraf.sync(testDir);
   });
 });
 
@@ -98,6 +102,7 @@ test('it can have the timestamp overridden', function (t) {
     var filePath = file.history.slice(-1)[0];
     t.true(filePath.indexOf(options.timestamp + '') > -1);
     t.equal(json.foo, JSON.parse(input.contents).foo);
+    rimraf.sync(testDir);
   });
 });
 
@@ -110,6 +115,7 @@ test('it can gzip file', function (t) {
   writeReadVinyl(createVinyl(input), options, function(err, file, json) {
     t.equal(file.history.slice(-1)[0].split('.').pop(), 'json');
     t.equal(json.foo, JSON.parse(input.contents).foo);
+    rimraf.sync(testDir);
   });
 });
 
@@ -125,6 +131,7 @@ test('it ignores empty files', function(t) {
     t.equal(result.contents, null);
     t.equal(result.history.length, 1);
     t.equal(result.history[0], 'chronostore.json');
+    rimraf.sync(testDir);
   });
 });
 
@@ -140,11 +147,12 @@ test('it throws on streams', function(t) {
     .pipe(cs.write(options))
     .on('error', function(error) {
       t.equal(error.message, 'Streaming not supported');
+      rimraf.sync(testDir);
     });
 });
 
 test('it can search', function(t) {
-  t.plan(1);
+  t.plan(3);
 
   var fileContents = [
     {'path': 'file1.json', 'contents': '{"foo":1}'},
@@ -153,20 +161,43 @@ test('it can search', function(t) {
   ];
 
   var files = R.map(createVinyl, fileContents);
+  var asserts = 0;
 
   cs.vinylsToStream(files)
     .pipe(cs.write(options))
-    .on('data', function(file) {})
+    .on('data', function() {})
     .on('end', function() {
-      setTimeout(function() {
-        cs.search(options)
-          .on('data', function(file) {
-            console.log(file);
-          })
-          .on('end', function() {
-            t.true(1);
-          });
-      }, 3000);
+      cs.search(options)
+        .on('data', function(file) {
+          var json = JSON.parse(file.contents.toString());
+          var input = JSON.parse(fileContents[asserts].contents);
+          t.equal(json.foo, input.foo);
+          asserts++;
+        })
+        .on('end', function() {
+          rimraf.sync(testDir);
+        });
+    });
+});
+
+test('it can search with default options', function(t) {
+  t.plan(1);
+
+  var input = {'contents': '{"foo": "bars"}'};
+
+  cs.vinylsToStream(createVinyl(input))
+    .pipe(cs.write())
+    .on('data', function() {})
+    .on('end', function() {
+      cs.search()
+        .on('data', function(file) {
+          var json = JSON.parse(file.contents.toString());
+          var original = JSON.parse(input.contents);
+          t.equal(json.foo, original.foo);
+        })
+        .on('end', function() {
+          rimraf.sync(defaultDir);
+        });
     });
 });
 
