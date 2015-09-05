@@ -51,6 +51,7 @@
     "gulp-filter": "^3.0.1",
     "gulp-gunzip": "0.0.3",
     "gulp-gzip": "^1.2.0",
+    "gulp-if": "^1.2.5",
     "gulp-rename": "^1.2.2",
     "gulp-util": "^3.0.6",
     "moment": "^2.10.6",

@@ -11,9 +11,15 @@ var Vinyl = require('vinyl');
 var fs = require('fs-extra');
 var through2 = require('through2');
 var rimraf = require('rimraf');
+
 var testDir = './testdata';
 var defaultDir = './chronostore';
 var options = {'root': testDir};
+var fileContents = [
+  {'path': 'file1.json', 'contents': '{"foo":1}'},
+  {'path': 'file2.json', 'contents': '{"foo":2}'},
+  {'path': 'file3.json', 'contents': '{"foo":3}'}
+];
 
 //function log(object) {
 //  for (var property in object) {
@@ -30,8 +36,8 @@ function createVinyl(options) {
   });
 }
 
-function writeVinyls(files, options, callback) {
-  cs.vinylsToStream(files)
+function writeVinyl(file, options, callback) {
+  cs.vinylsToStream(file)
     .pipe(cs.write(options))
     .on('data', function(result) {
       return callback(null, result);
@@ -39,7 +45,7 @@ function writeVinyls(files, options, callback) {
 }
 
 function readVinyl(filePath, callback) {
-  cs.getVinylStream(filePath)
+  cs.read(filePath)
     .on('data', function(file) {
       var json = JSON.parse(file.contents.toString());
       return callback(null, file, json);
@@ -47,7 +53,7 @@ function readVinyl(filePath, callback) {
 }
 
 function writeReadVinyl(file, options, callback) {
-  writeVinyls(file, options, function(err, result) {
+  writeVinyl(file, options, function(err, result) {
     var filePath = result.history.slice(-1)[0];
     readVinyl(filePath, callback);
   });
@@ -127,7 +133,7 @@ test('it ignores empty files', function(t) {
     'contents': null
   });
 
-  writeVinyls(file, options, function(err, result) {
+  writeVinyl(file, options, function(err, result) {
     t.equal(result.contents, null);
     t.equal(result.history.length, 1);
     t.equal(result.history[0], 'chronostore.json');
@@ -151,15 +157,8 @@ test('it throws on streams', function(t) {
     });
 });
 
-test('it can search', function(t) {
+test('it can search for everything', function(t) {
   t.plan(3);
-
-  var fileContents = [
-    {'path': 'file1.json', 'contents': '{"foo":1}'},
-    {'path': 'file2.json', 'contents': '{"foo":2}'},
-    {'path': 'file3.json', 'contents': '{"foo":3}'}
-  ];
-
   var files = R.map(createVinyl, fileContents);
   var asserts = 0;
 
@@ -199,6 +198,35 @@ test('it can search with default options', function(t) {
           rimraf.sync(defaultDir);
         });
     });
+});
+
+test('it can search for specific time period', function(t) {
+  t.plan(1);
+
+
+  var file1 = createVinyl(fileContents[0]);
+  var file2 = createVinyl(fileContents[1]);
+  var file3 = createVinyl(fileContents[2]);
+
+  var options1 = {'root': testDir, 'timestamp': 1000};
+  var options2 = {'root': testDir, 'timestamp': 2000};
+  var options3 = {'root': testDir, 'timestamp': 3000};
+
+  writeVinyl(file1, options1, function() {
+    writeVinyl(file2, options2, function() {
+      writeVinyl(file3, options3, function() {
+        cs.search({'from': 1500, 'to': 2500, 'root': testDir})
+          .on('data', function(file) {
+            var json = JSON.parse(file.contents.toString());
+            var original = JSON.parse(fileContents[1].contents);
+            t.equal(json.foo, original.foo);
+          })
+          .on('end', function() {
+            rimraf.sync(testDir);
+          });
+      });
+    });
+  });
 });
 
 //test('write and read multiple files', function (t) {
