@@ -8,7 +8,7 @@ Sometimes when collecting data, the most important attribute of the data will be
 
 While the file properties of files in normal file systems can certainly be useful, they are also fragile in the sense that some file systems will change the timestamps and an essential attribute of the data might be lost. And if you have to move the file to another storage solution, you might have no idea what will happen to the timestamps.
 
-To solve all these problems, I have created chronostore. You simply hand it some files, and it will rename them to a timestamp plus a UUID in a folder structure of your choice, using plain files in your file system. Afterwards, you can search for file according to the time you handed them to chronostore, and you will be handed back a stream of files for the time span you select. It also supports automatic gzipping of files, if you turn it on with an option.
+To solve all these problems, I have created chronostore. You simply hand it some files, and it will rename them to a timestamp plus a UUID in a folder structure of your choice, using plain files in your file system. Afterwards, you can search for files according to the time at which you handed them to chronostore, and you will be handed back a stream of files for the timespan you select. It also supports automatic gzipping of files, if you turn it on with an option.
 
 ## Installation
 ```
@@ -17,16 +17,16 @@ npm install chronostore
 
 ## Methods
 ### chronostore.write(*[options]*)
-A write stream that accepts a stream of [vinyl](https://www.npmjs.com/package/vinyl) files. You can use [vinyl-source-stream](https://www.npmjs.com/package/vinyl-source-stream), [vinyl-fs](https://www.npmjs.com/package/vinyl-fs)(.src), [gulp](https://www.npmjs.com/package/gulp)(.src) or whatever you feel like that streams a source of vinyl files. If you want to write JavaScript objects as JSON directly, have a look at ```chronostore.writeObject()```.
+A write stream that accepts a stream of [vinyl](https://www.npmjs.com/package/vinyl) files. You can use [vinyl-source-stream](https://www.npmjs.com/package/vinyl-source-stream), [vinyl-fs](https://www.npmjs.com/package/vinyl-fs)(.src), [gulp](https://www.npmjs.com/package/gulp)(.src) or whatever you feel like that streams a source of vinyl files. If you want to write JavaScript objects as JSON directly, have a look at ```chronostore.writeObject()```. See *example.js*.
 
 options (object):
-- ```format``` (string[]) - an array of [moment](https://www.npmjs.com/package/moment) format strings, indicating the folder structure, one folder level per entry. Defaults to ```['YYYY']```.
 - ```root``` (string) - the root of the chronostore file system. Defaults to ```./chronostore```.
+- ```format``` (string[]) - an array of [moment](https://www.npmjs.com/package/moment) format strings, indicating the folder structure, one folder level per entry. Defaults to ```['YYYY']```.
 - ```gzip``` (boolean) - turn on gzip compression (only works with vinyl files with Buffer contents). 
 - ```timestamp``` (number) - override the timestamp, to make the file appear from a different time.
 
 ### chronostore.writeObject(*[options]*)
-A wrapper function around ```chronostore.write()``` for writing a stream of JavaScript objects to JSON format directly. Conversion to vinyl files will be done on the fly. Remember that functions cannot be parsed.
+A wrapper function around ```chronostore.write()``` for writing a stream of JavaScript objects to JSON format directly. Conversion to vinyl files will be done on the fly. Remember that functions cannot be parsed. See *exampleObject.js*.
 
 options (object):
 - Same as ```chronostore.write()```
