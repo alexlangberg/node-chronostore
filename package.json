@@ -42,7 +42,7 @@
     "fs-extra": "^0.24.0",
     "rimraf": "^2.4.3",
     "tape": "^4.2.0",
-    "vinyl": "^0.5.1",
+    "vinyl": "^0.5.3",
     "watch": "^0.16.0"
   },
   "repository": {
