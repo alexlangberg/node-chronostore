@@ -1,26 +1,21 @@
 'use strict';
 
 var cs = require('./');
-var through2 = require('through2');
+var gulp = require('gulp');
 
-// set object and root
-var obj = {'foo': 'bar'};
-var options = {'root': 'foobar'};
+var options = {
+  'root': 'foobaz'
+};
 
-// create a stream and end it with null
-var stream = through2.obj();
-stream.push(obj);
-stream.push(null);
+// create a vinyl stream
+var stream = gulp.src('README.md');
 
-// write object to disk
-stream.pipe(cs.writeObject(options))
+// write file to disk
+stream.pipe(cs.write(options))
   .on('data', function() {
-
-    // when object has been written, search for it
+    // when file has been written, search for it
     cs.search(options)
       .on('data', function(file) {
-
-        // log vinyl file and it's contents
         console.log(file);
         console.log(file.contents.toString());
       });
