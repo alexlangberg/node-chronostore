@@ -10,6 +10,8 @@ While the file properties of files in normal file systems can certainly be usefu
 
 To solve all these problems, I have created chronostore. You simply hand it some files, and it will rename them to a timestamp plus a UUID in a folder structure of your choice, using plain files in your file system. Afterwards, you can search for files according to the time at which you handed them to chronostore, and you will be handed back a stream of files for the timespan you select. It also supports automatic gzipping of files, if you turn it on with an option.
 
+Linted with ESLint, tested with tape and 100% coverage with covert.
+
 ## Installation
 ```
 npm install chronostore
