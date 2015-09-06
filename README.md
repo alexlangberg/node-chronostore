@@ -52,6 +52,9 @@ options (object):
 - ```parseJSON``` (boolean) - set to ```true``` to enable automatic parsing of JSON files to return a JS object instead of the usual vinyl file.
 - ```gulp``` (object) - an options object that will be passed on to ```gulp.src()``` internally. Can be used to e.g. set files to be read as streams instead of buffers.
 
+### Additional methods
+Other methods are publicly exposed, most of them for handling streams and vinyl files. See lib folder for source code.
+
 ## Example
 ```javascript
 var cs = require('chronostore');
