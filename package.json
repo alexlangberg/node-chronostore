@@ -1,10 +1,36 @@
 {
-  "name": "node-chronostore",
+  "name": "chronostore",
   "version": "1.0.0",
-  "description": "In dev.",
+  "description": "Time-based, streaming file system.",
   "main": "index.js",
   "directories": {
     "test": "test"
+  },
+  "scripts": {
+    "test": "node test/*.js | faucet && npm run clean",
+    "lint": "eslint lib test || true",
+    "coverage": "covert test/*.js || true && npm run clean",
+    "coveralls": "npm run coverage -s && coveralls < coverage/lcov.info",
+    "watch": "watch 'clear && npm run lint && npm test && npm run coverage' lib test",
+    "doctoc": "doctoc --github --title \"# Changelog\" CHANGELOG.md",
+    "patch": "npm version patch",
+    "minor": "npm version minor",
+    "major": "npm version major",
+    "clean": "rimraf testdata chronostore"
+  },
+  "dependencies": {
+    "gulp": "^3.9.0",
+    "gulp-filter": "^3.0.1",
+    "gulp-gunzip": "0.0.3",
+    "gulp-gzip": "^1.2.0",
+    "gulp-if": "^1.2.5",
+    "gulp-rename": "^1.2.2",
+    "gulp-util": "^3.0.6",
+    "moment": "^2.10.6",
+    "node-uuid": "^1.4.3",
+    "ramda": "^0.17.1",
+    "readdirp": "^2.0.0",
+    "through2": "^2.0.0"
   },
   "devDependencies": {
     "concat-stream": "^1.5.0",
@@ -19,25 +45,14 @@
     "vinyl": "^0.5.1",
     "watch": "^0.16.0"
   },
-  "scripts": {
-    "test": "node test/*.js | faucet && npm run clean",
-    "lint": "eslint lib test || true",
-    "coverage": "covert test/*.js || true && npm run clean",
-    "coveralls": "npm run coverage -s && coveralls < coverage/lcov.info",
-    "watch": "watch 'clear && npm run lint && npm test && npm run coverage' lib test",
-    "doctoc": "doctoc --github --title \"# Changelog\" CHANGELOG.md",
-    "patch": "npm version patch",
-    "minor": "npm version minor",
-    "major": "npm version major",
-    "clean": "rimraf testdata chronostore"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alexlangberg/node-chronostore.git"
   },
   "keywords": [
-    "storage",
     "chronological",
+    "time",
+    "storage",
     "files",
     "filesystem"
   ],
@@ -46,19 +61,5 @@
   "bugs": {
     "url": "https://github.com/alexlangberg/node-chronostore/issues"
   },
-  "homepage": "https://github.com/alexlangberg/node-chronostore#readme",
-  "dependencies": {
-    "gulp": "^3.9.0",
-    "gulp-filter": "^3.0.1",
-    "gulp-gunzip": "0.0.3",
-    "gulp-gzip": "^1.2.0",
-    "gulp-if": "^1.2.5",
-    "gulp-rename": "^1.2.2",
-    "gulp-util": "^3.0.6",
-    "moment": "^2.10.6",
-    "node-uuid": "^1.4.3",
-    "ramda": "^0.17.1",
-    "readdirp": "^2.0.0",
-    "through2": "^2.0.0"
-  }
+  "homepage": "https://github.com/alexlangberg/node-chronostore#readme"
 }
