@@ -1,8 +1,8 @@
 # node-chronostore
 [![npm version](http://img.shields.io/npm/v/chronostore.svg)](https://www.npmjs.org/package/chronostore)
 [![Build Status](http://img.shields.io/travis/alexlangberg/node-chronostore.svg)](https://travis-ci.org/alexlangberg/node-chronostore)
-[![Dependency Status](https://david-dm.org/alexlangberg/node-goldwasher.svg)](https://david-dm.org/alexlangberg/node-goldwasher)
-[![devDependency Status](https://david-dm.org/alexlangberg/node-goldwasher/dev-status.svg)](https://david-dm.org/alexlangberg/node-goldwasher#info=devDependencies)
+[![Dependency Status](https://david-dm.org/alexlangberg/node-chronostore.svg)](https://david-dm.org/alexlangberg/node-chronostore)
+[![devDependency Status](https://david-dm.org/alexlangberg/node-chronostore/dev-status.svg)](https://david-dm.org/alexlangberg/node-chronostore#info=devDependencies)
 
 Sometimes when collecting data, the most important attribute of the data will be the point in time at which it was collected. The data might all be structured in the same way, or simply awaiting analysis in the future. The datum itself might not have any relevance, without relation to a collection of data collected over time for comparison. It not have any meaningful identification except a timestamp, which is often the case with automated data collection.
 
