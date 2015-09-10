@@ -27,6 +27,13 @@ options (object):
 - ```gzip``` (boolean) - turn on gzip compression (only works with vinyl files with Buffer contents). 
 - ```timestamp``` (number) - override the timestamp, to make the file appear from a different time.
 
+### chronostore.objectToStream(*object*)
+A utility function to convert a single JS object to a stream containing that object, which can then be passed as a stream input to ```chronostore.writeObject()```. Useful if you aren't reading a JS object stream as a source but creating objects yourself.
+
+Example: ```chronostore.objectToStream({foo: 'bar'}).pipe(chronostore.writeObject());```
+
+object (object): a JS object.
+
 ### chronostore.writeObject(*[options]*)
 A wrapper function around ```chronostore.write()``` for writing a stream of JavaScript objects to JSON format directly. Conversion to vinyl files will be done on the fly. Remember that functions cannot be parsed. See *exampleObject.js*.
 

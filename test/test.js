@@ -168,9 +168,8 @@ test('it ignores empty files', function(t) {
 test('it can write input vinyls with streams as content', function(t) {
   t.plan(1);
 
-  var stream = through2.obj();
-  stream.push(new Buffer(fileContents[0].contents));
-  stream.push(null);
+  var buf = new Buffer(fileContents[0].contents);
+  var stream = cs.objectToStream(buf);
 
   var file = new Vinyl({
     'path': 'chronostore.json',
@@ -212,9 +211,7 @@ test('it throws on write input as streams if gzip enabled', function(t) {
 test('it can write a JS object to disk as JSON', function(t) {
   t.plan(1);
   var obj = {'foo': 'bar'};
-  var stream = through2.obj();
-  stream.push(obj);
-  stream.push(null);
+  var stream = cs.objectToStream(obj);
 
   stream.pipe(cs.writeObject(options))
     .on('data', function() {
