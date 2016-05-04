@@ -63,6 +63,28 @@ test('it can write a virtual file to disk', function(t) {
   });
 });
 
+test('it can log writes and write logs', function(t) {
+  var options = {
+    'root': testDir,
+    'log': {
+      'path': './testlogs'
+    }
+  };
+  t.plan(3);
+
+  writeReadVinyl(cs.createVinyl(fileContents[0]), options, function(err, file, json) {
+    var filename = file.history.slice(-1)[0].split('/').pop();
+    var log = JSON.parse(fs.readFileSync(options.log.path + '/' + 'chronostore.log'));
+
+    t.equal(filename.split('.').pop(), 'json');
+    t.equal(log.filename, filename);
+    t.equal(json.foo, JSON.parse(fileContents[0].contents).foo);
+
+    rimraf.sync(options.root);
+    rimraf.sync(options.log.path);
+  });
+});
+
 test('it can write a file to disk with default options', function(t) {
   t.plan(2);
 

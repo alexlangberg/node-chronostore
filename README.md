@@ -26,6 +26,8 @@ options (object):
 - ```format``` (string[]) - an array of [moment](https://www.npmjs.com/package/moment) format strings, indicating the folder structure, one folder level per entry. Defaults to ```['YYYY']```.
 - ```gzip``` (boolean) - turn on gzip compression (only works with vinyl files with Buffer contents). 
 - ```timestamp``` (number) - override the timestamp, to make the file appear from a different time.
+- ```log``` (boolean/object) - turn on logging, only for writes. Can be either ```true```, ```false``` or an object containing the options for [rotating-file-stream](https://www.npmjs.com/package/rotating-file-stream) that writes the logs.
+
 
 ### chronostore.objectToStream(*object*)
 A utility function to convert a single JS object to a stream containing that object, which can then be passed as a stream input to ```chronostore.writeObject()```. Useful if you aren't reading a JS object stream as a source but creating objects yourself.
