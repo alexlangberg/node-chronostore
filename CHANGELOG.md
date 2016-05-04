@@ -6,6 +6,10 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
+### v1.2.0
+
+ * Add logging support.
+
 ### v1.0.0
 
  * Initial commit.
