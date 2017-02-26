@@ -64,13 +64,16 @@ test('it can write a virtual file to disk', function(t) {
 });
 
 test('it can log writes and write logs', function(t) {
+  t.plan(3);
+  cs.logger = undefined;
+  cs.rotationLogger = undefined;
+
   var options = {
     'root': testDir,
     'log': {
       'path': './testlogs'
     }
   };
-  t.plan(3);
 
   writeReadVinyl(cs.createVinyl(fileContents[0]), options, function(err, file, json) {
     var filename = file.history.slice(-1)[0].split('/').pop();
@@ -320,6 +323,35 @@ test('it can search for specific time period', function(t) {
             }, 100);
           });
       });
+    });
+  });
+});
+
+test('it can log rotations', function(t) {
+  t.plan(2);
+  cs.logger = undefined;
+  cs.rotationLogger = undefined;
+
+  var options = {
+    'root': testDir,
+    'log': {
+      'path': './testlogs',
+      'size': '10B'
+    }
+  };
+
+  writeVinyl(cs.createVinyl(fileContents[0]), options, function() {
+    writeVinyl(cs.createVinyl(fileContents[1]), options, function() {
+      // let file system take a breath...
+      setTimeout(function() {
+        var log = fs.readFileSync(options.log.path + '/' + 'rotation.log', 'utf-8');
+
+        t.true(log.indexOf('-01-chronostore.log') !== -1);
+        t.true(log.indexOf('-02-chronostore.log') !== -1);
+
+        rimraf.sync(options.root);
+        rimraf.sync(options.log.path);
+      }, 100);
     });
   });
 });
